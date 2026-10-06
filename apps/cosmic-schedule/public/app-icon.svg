@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="宇宙课程表宇宙飞船">
+  <defs>
+    <linearGradient id="purple-space" x1="90" y1="70" x2="930" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#273d94"/>
+      <stop offset="0.52" stop-color="#514fbd"/>
+      <stop offset="1" stop-color="#735fd1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#purple-space)"/>
+  <g fill="#fff7c5">
+    <circle cx="170" cy="168" r="18"/>
+    <circle cx="292" cy="104" r="10"/>
+    <circle cx="817" cy="172" r="15"/>
+    <circle cx="876" cy="498" r="10"/>
+    <path d="M672 104l18 37 41 6-30 29 7 41-36-19-37 19 7-41-29-29 41-6z"/>
+  </g>
+  <path d="M162 802C299 681 414 622 557 530" fill="none" stroke="#aebdff" stroke-width="22" stroke-linecap="round" stroke-dasharray="34 52" opacity=".88"/>
+  <!-- The rocket below reuses the exact drawing from art/space-header.svg. -->
+  <g transform="translate(242 172) rotate(24 258 324) scale(12)">
+    <path d="M0 19C14 3 31 0 43 0c0 12-3 29-19 43L7 36z" fill="#fff"/>
+    <path d="M28 3c6-2 11-3 15-3 0 5-1 10-3 15z" fill="#ffd768"/>
+    <circle cx="27" cy="16" r="6" fill="#78d8ee" stroke="#40539c" stroke-width="2"/>
+    <path d="M10 31L2 47l16-8M20 39l-4 15 15-13" fill="#ff7993"/>
+    <path d="M7 37L-4 54l18-11z" fill="#ffb45c"/>
+  </g>
+</svg>

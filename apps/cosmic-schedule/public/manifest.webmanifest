@@ -1,0 +1,17 @@
+{
+  "name": "宇宙课程表",
+  "short_name": "宇宙课程表",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#4b55cc",
+  "background_color": "#eef2f6",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

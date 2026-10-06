@@ -1,0 +1,10 @@
+{
+  "name": "hidearyui",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "npm --prefix apps/cosmic-schedule run dev",
+    "build": "npm --prefix apps/cosmic-schedule run build",
+    "test": "npm --prefix apps/cosmic-schedule test"
+  }
+}

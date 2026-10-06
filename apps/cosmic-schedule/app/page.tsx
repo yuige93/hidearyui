@@ -22,6 +22,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { PlannerLocal } from '@/lib/local-storage';
+import { PlannerSync, SYNC_PROTOCOL, type RemoteSnapshot } from '@/lib/planner-sync';
 import { GrowthMap } from '@/components/growth-map';
 import { Button } from '@/components/ui/button';
 import {
@@ -169,9 +170,11 @@ type StarFlight = {
 export default function Home({
   storageKey = STORAGE_KEY,
   assetBase = '',
+  syncEndpoint,
 }: {
   storageKey?: string;
   assetBase?: string;
+  syncEndpoint?: string;
 } = {}) {
   const [state, setState] = useState<PlannerState>(emptyState);
   const [ready, setReady] = useState(false);
@@ -190,8 +193,74 @@ export default function Home({
   const [starFlight, setStarFlight] = useState<StarFlight | null>(null);
   const starTargetRef = useRef<HTMLButtonElement>(null);
   const starFlightIdRef = useRef(0);
-  const storeRef = useRef<PlannerLocal | null>(null);
+  const storeRef = useRef<PlannerLocal | PlannerSync | null>(null);
+  const remoteEndpoint = syncEndpoint ?? '';
   useEffect(() => {
+    if (remoteEndpoint) {
+      let cancelled = false;
+      async function request(
+        method: 'GET' | 'PUT',
+        revision?: number,
+        next?: PlannerState,
+      ): Promise<RemoteSnapshot> {
+        const response = await fetch(remoteEndpoint, {
+          method,
+          credentials: 'include',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(10_000),
+          headers:
+            method === 'PUT'
+              ? { 'Content-Type': 'application/json' }
+              : { Accept: 'application/json' },
+          ...(method === 'PUT'
+            ? {
+                body: JSON.stringify({
+                  syncProtocol: SYNC_PROTOCOL,
+                  revision,
+                  state: next,
+                }),
+              }
+            : {}),
+        });
+        const payload = (await response.json()) as RemoteSnapshot;
+        if (response.status === 426) throw new Error('update_required');
+        if (response.status === 409) return { ...payload, conflict: true };
+        if (!response.ok) throw new Error(`sync_${method}_${response.status}`);
+        return payload;
+      }
+      const sync = new PlannerSync({
+        storage: {
+          getItem: (key) => localStorage.getItem(key),
+          setItem: (key, value) => localStorage.setItem(key, value),
+        },
+        storageKey,
+        get: () => request('GET'),
+        put: (revision, next) => request('PUT', revision, next),
+        onState: setState,
+        onStatus: setStorageMessage,
+        onReadOnly: setReadOnly,
+      });
+      storeRef.current = sync;
+      void sync.start().finally(() => {
+        if (!cancelled) setReady(true);
+      });
+      const retry = () => {
+        if (!document.hidden) void sync.sync();
+      };
+      const interval = window.setInterval(retry, 15_000);
+      window.addEventListener('focus', retry);
+      window.addEventListener('online', retry);
+      document.addEventListener('visibilitychange', retry);
+      return () => {
+        cancelled = true;
+        sync.stop();
+        if (storeRef.current === sync) storeRef.current = null;
+        window.clearInterval(interval);
+        window.removeEventListener('focus', retry);
+        window.removeEventListener('online', retry);
+        document.removeEventListener('visibilitychange', retry);
+      };
+    }
     const store = new PlannerLocal({
       storage: {
         getItem: (key) => localStorage.getItem(key),
@@ -221,7 +290,7 @@ export default function Home({
       if (storeRef.current === store) storeRef.current = null;
       window.removeEventListener('storage', reload);
     };
-  }, [storageKey]);
+  }, [remoteEndpoint, storageKey]);
 
   const weekStart = mondayOf(selectedDate);
   const week = schoolWeek.map((day, index) => {
@@ -268,7 +337,7 @@ export default function Home({
   function change(next: PlannerState, message: string) {
     if (readOnly) {
       setUndo(null);
-      setNotice('本地数据暂时无法读取，请先导出备份或检查浏览器存储');
+      setNotice(remoteEndpoint ? '当前账号为只读访问，不能修改共享计划' : '本地数据暂时无法读取，请先导出备份或检查浏览器存储');
       return;
     }
     setUndo(state);
@@ -291,7 +360,7 @@ export default function Home({
     item?: PlanItem,
   ) {
     if (readOnly) {
-      setNotice('本地数据暂时无法读取，请先导出备份或检查浏览器存储');
+      setNotice(remoteEndpoint ? '当前账号为只读访问，不能修改共享计划' : '本地数据暂时无法读取，请先导出备份或检查浏览器存储');
       return;
     }
     const recurringPlan = item?.sourceId
@@ -447,7 +516,7 @@ export default function Home({
   }
   function openTask(task?: Task, title = '') {
     if (readOnly) {
-      setNotice('本地数据暂时无法读取，请先导出备份或检查浏览器存储');
+      setNotice(remoteEndpoint ? '当前账号为只读访问，不能修改共享计划' : '本地数据暂时无法读取，请先导出备份或检查浏览器存储');
       return;
     }
     setError('');
@@ -558,7 +627,7 @@ export default function Home({
   }
   function toggleTask(task: Task, source: HTMLElement) {
     if (readOnly) {
-      setNotice('本地数据暂时无法读取，请先导出备份或检查浏览器存储');
+      setNotice(remoteEndpoint ? '当前账号为只读访问，不能修改共享计划' : '本地数据暂时无法读取，请先导出备份或检查浏览器存储');
       return;
     }
     const completing = !task.done;
@@ -598,7 +667,7 @@ export default function Home({
   }
   function openSpend() {
     if (readOnly) {
-      setNotice('本地数据暂时无法读取，请先导出备份或检查浏览器存储');
+      setNotice(remoteEndpoint ? '当前账号为只读访问，不能修改共享计划' : '本地数据暂时无法读取，请先导出备份或检查浏览器存储');
       return;
     }
     setError('');
@@ -658,7 +727,7 @@ export default function Home({
   }
   function exportBackup() {
     const url = URL.createObjectURL(
-      new Blob([storeRef.current?.backup(state) ?? JSON.stringify(state, null, 2)], { type: 'application/json' }),
+      new Blob([storeRef.current instanceof PlannerLocal ? storeRef.current.backup(state) : JSON.stringify(state, null, 2)], { type: 'application/json' }),
     );
     const link = document.createElement('a');
     link.href = url;
@@ -1393,7 +1462,7 @@ export default function Home({
         <footer className="save-status" aria-live="polite">
           <span
             className={
-              storageMessage.startsWith('已保存在')
+              storageMessage.startsWith('已保存在') || storageMessage.startsWith('已同步')
                 ? 'status-dot'
                 : 'status-dot status-warning'
             }
@@ -1866,17 +1935,17 @@ export default function Home({
           <DialogHeader>
             <DialogTitle>数据与备份</DialogTitle>
             <DialogDescription>
-              公开版 · 本地保存
+              {remoteEndpoint ? '自托管同步版' : '本地保存'}
             </DialogDescription>
           </DialogHeader>
           <div className="settings-copy">
             <p>
               <strong>当前保存方式</strong>
-              数据保存在当前浏览器，刷新后保留；不同设备不会同步。
+              {remoteEndpoint ? '使用同一个自托管地址的设备共享计划，并在当前浏览器保留缓存。' : '数据保存在当前浏览器，刷新后保留；不同设备不会同步。'}
             </p>
             <p>
               <strong>课程与时间</strong>
-              课表使用虚构示例。正式课程请在源码的示例配置中调整；节假日和学校调课需自行配置。
+              课表使用虚构示例，已包含2026年国家节假日和节气。学校补课按自己的校历配置。
             </p>
             <Button
               className="add-task-button"
@@ -1888,7 +1957,7 @@ export default function Home({
             <small>当前仅支持导出 JSON。</small>
             <p>
               <strong>添加到主屏幕</strong>
-              iPhone / iPad Safari：分享 → 添加到主屏幕。公开版需要联网加载页面。
+              iPhone / iPad Safari：分享 → 添加到主屏幕。首次打开需要联网；离线时可查看已缓存页面和本地计划。
             </p>
             <p>
               <strong>安装到 Windows 桌面</strong>

@@ -3,14 +3,15 @@
   "short_name": "宇宙课程表",
   "start_url": "./",
   "scope": "./",
+  "id": "./",
   "display": "standalone",
   "theme_color": "#4b55cc",
   "background_color": "#eef2f6",
   "icons": [
     {
-      "src": "./app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
